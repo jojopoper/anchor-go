@@ -6,6 +6,7 @@ import (
 	"github.com/astaxie/beego"
 	_F "github.com/jojopoper/freeAnchor/models/file"
 	_L "github.com/jojopoper/freeAnchor/models/log"
+	_ck "github.com/jojopoper/go-models/checker"
 )
 
 // CheckManagerInstance 全局唯一实例
@@ -19,7 +20,7 @@ func NewCheckManager() *CheckManager {
 
 // CheckManager 检查管理器
 type CheckManager struct {
-	checker        map[string]ICheckInterface
+	checker        map[string]_ck.ICheckInterface
 	tomlController *_F.TomlFileController
 	lock           *sync.Mutex
 }
@@ -46,7 +47,7 @@ func (ths *CheckManager) Check() {
 }
 
 func (ths *CheckManager) regChecker() {
-	ths.checker = make(map[string]ICheckInterface)
+	ths.checker = make(map[string]_ck.ICheckInterface)
 
 	ct := new(CheckTransaction)
 	ct.Init(30, beego.AppConfig.String("accountid")).RegistManager(ths.checker).AddReportFunc(ths.checkerReport)
@@ -56,7 +57,7 @@ func (ths *CheckManager) regChecker() {
 	cid.Init(1800).RegistManager(ths.checker).AddReportFunc(ths.checkerReport)
 }
 
-func (ths *CheckManager) checkerReport(sender ICheckInterface, msg *CheckMessage) {
+func (ths *CheckManager) checkerReport(sender _ck.ICheckInterface, msg *_ck.CheckMessage) {
 	ths.lock.Lock()
 	defer ths.lock.Unlock()
 	if msg.GetError() != nil {

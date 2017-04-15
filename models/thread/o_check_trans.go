@@ -10,6 +10,7 @@ import (
 	"github.com/astaxie/beego"
 	_DB "github.com/jojopoper/freeAnchor/models/db"
 	_L "github.com/jojopoper/freeAnchor/models/log"
+	_ck "github.com/jojopoper/go-models/checker"
 	_api "github.com/jojopoper/stellarApi"
 	_x "github.com/stellar/go/xdr"
 )
@@ -21,18 +22,18 @@ const (
 
 // CheckTransaction 检查账户transaction
 type CheckTransaction struct {
-	CheckBase
+	_ck.CheckBase
 	cursor   string
 	accTrans *_api.AccountTransactions
 	accid    string // 需要检测的地址
 }
 
 // Init 初始化
-func (ths *CheckTransaction) Init(interval int, accid string) ICheckInterface {
+func (ths *CheckTransaction) Init(interval int, accid string) _ck.ICheckInterface {
 	ths.CheckBase.Init(interval)
-	ths.keyName = CheckTransName
+	ths.SetName(CheckTransName)
+	ths.SetExeFunc(ths.exe)
 	ths.accid = accid
-	ths.CheckBase.exe = ths.exe
 	ths.accTrans = _api.NewAccountTransactions(ths.accid)
 	return ths
 }
@@ -48,11 +49,11 @@ func (ths *CheckTransaction) exe() {
 		cnt, err := ths.updateCursor()
 		if err != nil {
 			_L.LoggerInstance.ErrorPrint("[CheckTransaction : do] Update cursor has error: \n%+v\n", err)
-			return
+			break
 		}
 		if cnt < 10 {
 			_L.LoggerInstance.InfoPrint("Checking complete!\n")
-			return
+			break
 		}
 	}
 	_L.LoggerInstance.InfoPrint("Check base account transaction complete\n")
@@ -111,7 +112,7 @@ func (ths *CheckTransaction) updateCursor() (int, error) {
 	if ths.accTrans.TransactionSize == 0 {
 		return 0, nil
 	}
-	var msg *CheckMessage
+	var msg *_ck.CheckMessage
 	for idx := ths.accTrans.TransactionSize - 1; idx >= 0; idx-- {
 		ret := ths.getDataFromOrig(ths.accTrans.GetAccTransUnit(idx))
 		if ret != nil {
@@ -129,12 +130,12 @@ func (ths *CheckTransaction) updateCursor() (int, error) {
 		}
 	}
 	if msg != nil {
-		ths.report(ths, msg.SetMessage(UpdatedMessage))
+		ths.Report(ths, msg.SetMessage(UpdatedMessage))
 	}
 	return ths.accTrans.TransactionSize, nil
 }
 
-func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *CheckMessage, err error) {
+func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *_ck.CheckMessage, err error) {
 	if len(r.AnchorName) > 0 {
 		tmp := &_DB.TAnchorHistory{
 			AnchorName: r.AnchorName,
@@ -157,7 +158,7 @@ func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *CheckMessa
 		leftDay := int64(math.Floor(r.LeftBalance))
 		r.CloseTimeout = r.CreateTime.Add(time.Duration(leftDay) * time.Hour * 24)
 		err = _DB.DatabaseInstance.Add(_DB.DbAnchorHistoryOperation, r)
-		msg = new(CheckMessage)
+		msg = new(_ck.CheckMessage)
 	} else {
 		if tmp.AssetName == r.AssetName {
 			if tmp.CreateTime.Unix() < r.CreateTime.Unix() {
@@ -176,19 +177,19 @@ func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *CheckMessa
 					r.AnchorName = tmp.AnchorName
 				}
 				err = _DB.DatabaseInstance.Update(_DB.DbAnchorHistoryOperation, r)
-				msg = new(CheckMessage)
+				msg = new(_ck.CheckMessage)
 			}
 		} else {
 			leftDay := int64(math.Floor(r.LeftBalance))
 			r.CloseTimeout = r.CreateTime.Add(time.Duration(leftDay) * time.Hour * 24)
 			err = _DB.DatabaseInstance.Add(_DB.DbAnchorHistoryOperation, r)
-			msg = new(CheckMessage)
+			msg = new(_ck.CheckMessage)
 		}
 	}
 	return
 }
 
-func (ths *CheckTransaction) status2Func(r *_DB.TAnchorHistory) (msg *CheckMessage, err error) {
+func (ths *CheckTransaction) status2Func(r *_DB.TAnchorHistory) (msg *_ck.CheckMessage, err error) {
 	tmp := &_DB.TAnchorHistory{
 		AssetAddr:  r.AssetAddr,
 		AssetName:  r.AssetName,
@@ -196,12 +197,12 @@ func (ths *CheckTransaction) status2Func(r *_DB.TAnchorHistory) (msg *CheckMessa
 	}
 	err = _DB.DatabaseInstance.Remove(_DB.DbAnchorHistoryOperation, tmp)
 	if err == nil {
-		msg = new(CheckMessage)
+		msg = new(_ck.CheckMessage)
 	}
 	return
 }
 
-func (ths *CheckTransaction) status3Func(r *_DB.TAnchorHistory) (msg *CheckMessage, err error) {
+func (ths *CheckTransaction) status3Func(r *_DB.TAnchorHistory) (msg *_ck.CheckMessage, err error) {
 	if r.LeftBalance <= 0 {
 		return
 	}

@@ -5,6 +5,7 @@ import (
 
 	_D "github.com/jojopoper/freeAnchor/models/db"
 	_L "github.com/jojopoper/freeAnchor/models/log"
+	_ck "github.com/jojopoper/go-models/checker"
 )
 
 const (
@@ -13,14 +14,14 @@ const (
 
 // CheckInvalidData 循环检查数据库中的数据是否有超时的
 type CheckInvalidData struct {
-	CheckBase
+	_ck.CheckBase
 }
 
 // Init 初始化
-func (ths *CheckInvalidData) Init(interval int) ICheckInterface {
+func (ths *CheckInvalidData) Init(interval int) _ck.ICheckInterface {
 	ths.CheckBase.Init(interval)
-	ths.keyName = CheckInvalidDataName
-	ths.CheckBase.exe = ths.exe
+	ths.SetName(CheckInvalidDataName)
+	ths.SetExeFunc(ths.exe)
 	return ths
 }
 
@@ -29,12 +30,12 @@ func (ths *CheckInvalidData) exe() {
 	tmpdatas := make([]*_D.TAnchorHistory, 0)
 	condi := "status=1"
 	err := _D.DatabaseInstance.GetRecords(_D.DbAnchorHistoryOperation, condi, "id", -1, true, &tmpdatas)
-	var msg *CheckMessage
+	var msg *_ck.CheckMessage
 	if err == nil {
 		for _, itm := range tmpdatas {
 			if itm.CloseTimeout.Unix() <= time.Now().Unix() {
 				if msg == nil {
-					msg = new(CheckMessage)
+					msg = new(_ck.CheckMessage)
 				}
 				itm.Status = 0
 				err = _D.DatabaseInstance.Update(_D.DbAnchorHistoryOperation, itm)
@@ -45,7 +46,7 @@ func (ths *CheckInvalidData) exe() {
 			}
 		}
 		if msg != nil {
-			ths.report(ths, msg.SetMessage(UpdatedMessage))
+			ths.Report(ths, msg.SetMessage(UpdatedMessage))
 		}
 	} else {
 		_L.LoggerInstance.ErrorPrint("[CheckInvalidData:exe()] Checking database status has error: \n%+v\n", err)
