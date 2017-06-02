@@ -88,7 +88,7 @@ func (ths *ResponseMsg) nameRequest() {
 
 func (ths *ResponseMsg) getNickName(param string) string {
 	name := strings.ToLower(param)
-	suffixIndex := strings.LastIndex(name, "*anchor.ledgercn.com")
+	suffixIndex := strings.LastIndex(name, "*anchor.ebitgo.com")
 	if suffixIndex == -1 || suffixIndex == 0 {
 		ths.Status = 501
 		ths.ErrMsg = fmt.Sprintf("type=name has error [ The value of 'q' format is error ]")
@@ -110,7 +110,7 @@ func (ths *ResponseMsg) getFromAnchor(n string) {
 		ths.Msg = new(ResponseBaseMsg)
 		ths.Status = 200
 		ths.Msg.Accountid = tmp.AssetAddr
-		ths.Msg.Address = n + "*anchor.ledgercn.com"
+		ths.Msg.Address = n + "*anchor.ebitgo.com"
 	}
 }
 
@@ -128,7 +128,7 @@ func (ths *ResponseMsg) getIDRequest() {
 		ths.Msg = new(ResponseBaseMsg)
 		ths.Status = 200
 		ths.Msg.Accountid = id
-		ths.Msg.Address = tmp.AnchorName + "*anchor.ledgercn.com"
+		ths.Msg.Address = tmp.AnchorName + "*anchor.ebitgo.com"
 	}
 }
 
@@ -155,7 +155,7 @@ func (ths *ResponseMsg) txidRequest() {
 		}
 		err = _D.DatabaseInstance.Get(_D.DbAnchorHistoryOperation, tmp)
 		if err == nil {
-			ths.Msg.Address = tmp.AnchorName + "*anchor.ledgercn.com"
+			ths.Msg.Address = tmp.AnchorName + "*anchor.ebitgo.com"
 		}
 		ths.Msg.Memo = trans.GetMemoString()
 		ths.Msg.MemoType = mt.String()

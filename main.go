@@ -10,6 +10,8 @@ import (
 	_L "github.com/jojopoper/freeAnchor/models/log"
 	_T "github.com/jojopoper/freeAnchor/models/thread"
 	_ "github.com/jojopoper/freeAnchor/routers"
+	_db "github.com/jojopoper/go-models/db"
+	_api "github.com/jojopoper/stellarApi"
 )
 
 func main() {
@@ -18,8 +20,8 @@ func main() {
 	_L.LoggerInstance.OpenDebug = true
 	_L.LoggerInstance.SetLogFunCallDepth(4)
 
-	dbInfo := _D.DatabaseInfo{
-		DbType:    _D.DatabaseType(beego.AppConfig.String("dbtype")),
+	dbInfo := _db.DatabaseInfo{
+		DbType:    _db.DatabaseType(beego.AppConfig.String("dbtype")),
 		AliasName: beego.AppConfig.String("aliasname"),
 		Host:      "127.0.0.1",
 		Port:      "3306",
@@ -28,6 +30,7 @@ func main() {
 	}
 	dbInfo.IsDebug = beego.AppConfig.String("runmode") == "dev"
 	_D.DatabaseInstance = _D.CreateDBInstance(dbInfo)
+	_api.SetHorizonBand(_api.FlyHorizon)
 	_T.CheckManagerInstance = _T.NewCheckManager()
 	_T.CheckManagerInstance.Check()
 	beego.Run()

@@ -7,6 +7,7 @@ import (
 	_F "github.com/jojopoper/freeAnchor/models/file"
 	_L "github.com/jojopoper/freeAnchor/models/log"
 	_ck "github.com/jojopoper/go-models/checker"
+	_nf "github.com/jojopoper/go-models/notify"
 )
 
 // CheckManagerInstance 全局唯一实例
@@ -57,14 +58,19 @@ func (ths *CheckManager) regChecker() {
 	cid.Init(1800).RegistManager(ths.checker).AddReportFunc(ths.checkerReport)
 }
 
-func (ths *CheckManager) checkerReport(sender _ck.ICheckInterface, msg *_ck.CheckMessage) {
+// func (ths *CheckManager) checkerReport(sender _ck.ICheckInterface, msg *_nf.ReportMessage) {
+func (ths *CheckManager) checkerReport(sender interface{}, msg *_nf.ReportMessage) {
+	var senderFrom _ck.ICheckInterface
+	if sender != nil {
+		senderFrom = sender.(_ck.ICheckInterface)
+	}
 	ths.lock.Lock()
 	defer ths.lock.Unlock()
-	if msg.GetError() != nil {
-		_L.LoggerInstance.ErrorPrint("[%s] Has error msg :\n%+v\n", sender.Name(), msg.GetError())
+	if msg.GetError() != nil && senderFrom != nil {
+		_L.LoggerInstance.ErrorPrint("[%s] Has error msg :\n%+v\n", senderFrom.Name(), msg.GetError())
 	}
-	if msg.GetMessage() != "" {
-		_L.LoggerInstance.InfoPrint("[%s] -> %s\n", sender.Name(), msg.GetMessage())
+	if msg.GetMessage() != "" && senderFrom != nil {
+		_L.LoggerInstance.InfoPrint("[%s] -> %s\n", senderFrom.Name(), msg.GetMessage())
 	}
 
 	if msg.GetMessage() == UpdatedMessage {

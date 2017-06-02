@@ -11,6 +11,7 @@ import (
 	_DB "github.com/jojopoper/freeAnchor/models/db"
 	_L "github.com/jojopoper/freeAnchor/models/log"
 	_ck "github.com/jojopoper/go-models/checker"
+	_nf "github.com/jojopoper/go-models/notify"
 	_api "github.com/jojopoper/stellarApi"
 	_x "github.com/stellar/go/xdr"
 )
@@ -79,7 +80,7 @@ func (ths *CheckTransaction) getStartCursor(wt *sync.WaitGroup) {
 	}
 	_L.LoggerInstance.InfoPrint("Read cursor from database ...\n")
 	datas := make([]*_DB.TAnchorHistory, 0)
-	err := _DB.DatabaseInstance.GetLastRecord(_DB.DbAnchorHistoryOperation, 1, "id", &datas)
+	err := _DB.DatabaseInstance.GetLastRecords(_DB.DbAnchorHistoryOperation, 1, "id", &datas)
 	if err != nil {
 		_L.LoggerInstance.ErrorPrint("Get last cursor from db has error :\n%+v\n", err)
 		return
@@ -112,7 +113,7 @@ func (ths *CheckTransaction) updateCursor() (int, error) {
 	if ths.accTrans.TransactionSize == 0 {
 		return 0, nil
 	}
-	var msg *_ck.CheckMessage
+	var msg *_nf.ReportMessage
 	for idx := ths.accTrans.TransactionSize - 1; idx >= 0; idx-- {
 		ret := ths.getDataFromOrig(ths.accTrans.GetAccTransUnit(idx))
 		if ret != nil {
@@ -130,12 +131,13 @@ func (ths *CheckTransaction) updateCursor() (int, error) {
 		}
 	}
 	if msg != nil {
-		ths.Report(ths, msg.SetMessage(UpdatedMessage))
+		ths.Notify(ths, msg.SetMessage(_nf.NotifyMsg, UpdatedMessage))
+		// ths.Report(ths, msg.SetMessage(UpdatedMessage))
 	}
 	return ths.accTrans.TransactionSize, nil
 }
 
-func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *_ck.CheckMessage, err error) {
+func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *_nf.ReportMessage, err error) {
 	if len(r.AnchorName) > 0 {
 		tmp := &_DB.TAnchorHistory{
 			AnchorName: r.AnchorName,
@@ -158,7 +160,7 @@ func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *_ck.CheckM
 		leftDay := int64(math.Floor(r.LeftBalance))
 		r.CloseTimeout = r.CreateTime.Add(time.Duration(leftDay) * time.Hour * 24)
 		err = _DB.DatabaseInstance.Add(_DB.DbAnchorHistoryOperation, r)
-		msg = new(_ck.CheckMessage)
+		msg = new(_nf.ReportMessage)
 	} else {
 		if tmp.AssetName == r.AssetName {
 			if tmp.CreateTime.Unix() < r.CreateTime.Unix() {
@@ -177,19 +179,19 @@ func (ths *CheckTransaction) status1Func(r *_DB.TAnchorHistory) (msg *_ck.CheckM
 					r.AnchorName = tmp.AnchorName
 				}
 				err = _DB.DatabaseInstance.Update(_DB.DbAnchorHistoryOperation, r)
-				msg = new(_ck.CheckMessage)
+				msg = new(_nf.ReportMessage)
 			}
 		} else {
 			leftDay := int64(math.Floor(r.LeftBalance))
 			r.CloseTimeout = r.CreateTime.Add(time.Duration(leftDay) * time.Hour * 24)
 			err = _DB.DatabaseInstance.Add(_DB.DbAnchorHistoryOperation, r)
-			msg = new(_ck.CheckMessage)
+			msg = new(_nf.ReportMessage)
 		}
 	}
 	return
 }
 
-func (ths *CheckTransaction) status2Func(r *_DB.TAnchorHistory) (msg *_ck.CheckMessage, err error) {
+func (ths *CheckTransaction) status2Func(r *_DB.TAnchorHistory) (msg *_nf.ReportMessage, err error) {
 	tmp := &_DB.TAnchorHistory{
 		AssetAddr:  r.AssetAddr,
 		AssetName:  r.AssetName,
@@ -197,12 +199,12 @@ func (ths *CheckTransaction) status2Func(r *_DB.TAnchorHistory) (msg *_ck.CheckM
 	}
 	err = _DB.DatabaseInstance.Remove(_DB.DbAnchorHistoryOperation, tmp)
 	if err == nil {
-		msg = new(_ck.CheckMessage)
+		msg = new(_nf.ReportMessage)
 	}
 	return
 }
 
-func (ths *CheckTransaction) status3Func(r *_DB.TAnchorHistory) (msg *_ck.CheckMessage, err error) {
+func (ths *CheckTransaction) status3Func(r *_DB.TAnchorHistory) (msg *_nf.ReportMessage, err error) {
 	if r.LeftBalance <= 0 {
 		return
 	}
@@ -257,7 +259,7 @@ func (ths *CheckTransaction) getDataFromOrig(tranInfo *_api.AccountTransUnit) *_
 	return ret
 }
 
-// 分割Memo字段获取内容
+// SplitMemoText 分割Memo字段获取内容
 // [cmd]:[AssetCode]:[NickName]
 func (ths *CheckTransaction) SplitMemoText(m string, r *_DB.TAnchorHistory) {
 	if len(m) == 0 {
